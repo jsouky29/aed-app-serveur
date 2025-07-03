@@ -1,12 +1,21 @@
 const jwt = require('jsonwebtoken');
+const SECRET_KEY = process.env.SECRET_KEY;
 
-module.exports = (req, res, next) => {
-    try {
-        const token = req.headers.authorization.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.SECRET_KEY); // Utilise la clé secrète de l'environnement
-        req.userData = { id: decoded.id }; // Stocke l'ID de l'utilisateur dans req.userData
-        next();
-    } catch (error) {
-        res.status(401).json({ error: 'Authentification échouée!' });
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+
+    if (!token) {
+        return res.status(401).json({ error: 'Access token required' });
     }
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) {
+            return res.status(403).json({ error: 'Invalid or expired token' });
+        }
+        req.user = user; // Attach user to request
+        next();
+    });
 };
+
+module.exports = authenticateToken;
